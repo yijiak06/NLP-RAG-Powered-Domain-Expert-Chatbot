@@ -93,9 +93,3 @@ python build_vector_db.py
 
 ---
 
-
-```
-
-```
-
-```
