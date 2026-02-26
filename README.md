@@ -66,8 +66,6 @@ graph LR
     D --> E(Embedding: all-MiniLM-L6-v2)
     E --> F[(ChromaDB Persistent)]
 
-没问题，这是转换为 Markdown 格式的版本，可以直接复制粘贴到 `README.md` 中：
-
 
 ```
 ##  How to Build the Database
