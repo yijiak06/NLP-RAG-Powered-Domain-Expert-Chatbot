@@ -1,95 +1,151 @@
-# 📊 RAG-Powered Financial Announcement Chatbot
+📊 RAG-Powered Financial Announcement Chatbot
 
-> **Module: Data Ingestion & Vector Database Construction**
->
-> This document details the implementation of **Requirements 1–3**, focusing on the data pipeline that powers the chatbot's retrieval capabilities.
+This project implements a Retrieval-Augmented Generation (RAG) chatbot for financial announcements from the Saudi Stock Exchange (Tadawul).
+It includes:
+* Data ingestion and cleaning
+* Smart document chunking
+* Vector database construction
+* Retrieval-Augmented Generation
+* Multi-turn conversation memory
 
----
+1️⃣ Domain Selection (Req 1)
+Domain: Saudi Stock Exchange (Tadawul) Corporate Announcements
+We use structured financial disclosures including:
+* Dividend announcements
+* Earnings reports
+* Corporate contracts
+* Regulatory filings
+Dataset: dataset.csv
+Total Documents: 1,800+ (well above minimum requirement)
+This domain requires precise retrieval because financial data is factual and time-sensitive.
 
-## 1. Domain Selection (Req 1)
+2️⃣ Document Processing (Req 2)
+A. Cleaning
+Before indexing, we:
+* Removed rows missing DetailedSummary
+* Removed duplicate announcements
+This ensures high-quality retrieval and avoids empty results.
 
-**Domain:** Saudi Stock Exchange (Tadawul) Corporate Announcements.
+B. Metadata Extraction
+Each chunk stores metadata for citation display:
+Field	Purpose
+source_id	Unique document ID
+title	Announcement subject
+date	Announcement date
+impact	Financial impact tag
+This allows answers to include traceable sources.
 
-We utilize a dataset of financial disclosures, dividend announcements, and corporate contracts from publicly listed companies. This domain requires precise retrieval due to the quantitative nature of the data.
+C. Smart Chunking Strategy
+We use a sliding window approach:
+* Chunk Size: 800 characters
+* Overlap: 100 characters
+* Filter: Remove chunks under 50 characters
+Why?
+Financial announcements can be long. Overlapping chunks prevent important information (like company name + dividend amount) from being split across boundaries.
 
-* **Source File:** `dataset.csv`
-* **Total Documents:** **1,839** (Exceeds the minimum requirement of 50 documents).
-* **Data Type:** Structured financial summaries and regulatory filings.
+3️⃣ Vector Database (Req 3)
+We use ChromaDB (Persistent Mode) to store embeddings.
+* Storage path: ./chroma_db
+* Embedding model: sentence-transformers/all-MiniLM-L6-v2
+* Similarity metric: Cosine similarity
 
----
+Why this model?
+It provides a strong balance between:
+* Speed
+* Accuracy
+* Lightweight CPU performance
+The database persists between runs and does not need rebuilding.
 
-## 2. Document Processing (Req 2)
-
-### A. Text Extraction & Cleaning
-We process the raw CSV data to ensure high-quality retrieval.
-* **Cleaning:** Removed rows with missing `DetailedSummary` to prevent empty context.
-* **De-duplication:** Removed duplicate entries to avoid redundant search results.
-
-### B. Metadata Extraction
-To enable accurate **Source Citations** in the UI, we extract and attach specific metadata to every chunk:
-
-| Field | Purpose |
-| :--- | :--- |
-| `source_id` | Unique identifier for tracking documents (e.g., `doc_102`). |
-| `Title` | The subject of the announcement (displayed in citations). |
-| `Date` | Critical for distinguishing between old and new financial news. |
-| `Impact` | Contextual tag describing the financial impact. |
-
-### C. Smart Chunking Strategy
-We implemented a **Fixed-size Sliding Window** strategy to handle long financial reports while preserving context.
-
-* **Chunk Size:** `800 characters` – Large enough to capture a full financial statement.
-* **Overlap:** `100 characters` – Ensures that critical numbers or sentences are not split at the chunk boundary.
-* **Filter:** Chunks smaller than 50 characters are discarded as noise.
-
-> **Why this strategy?**
-> Semantic boundaries in financial summaries can be irregular. A sliding window with overlap ensures we don't lose the connection between a "Company Name" and its "Dividend Value" if they fall on a split point.
-
----
-
-## 3. Vector Database Implementation (Req 3)
-
-We use **ChromaDB** in persistent mode to store embeddings. This ensures the database does not need to be rebuilt every time the application restarts.
-
-* **Database:** `ChromaDB` (Persistent Client)
-* **Storage Path:** `./chroma_db`
-* **Embedding Model:** `sentence-transformers/all-MiniLM-L6-v2`
-    * *Reasoning:* This model offers an excellent balance of speed and semantic accuracy for English text.
-
-### Architecture Pipeline
-
-```mermaid
+Vector Pipeline
 graph LR
-    A[dataset.csv] --> B(Load & Clean)
+    A[dataset.csv] --> B(Clean & Load)
     B --> C(Metadata Extraction)
-    C --> D(Smart Chunking)
-    D --> E(Embedding: all-MiniLM-L6-v2)
-    E --> F[(ChromaDB Persistent)]
+    C --> D(Chunking)
+    D --> E(Embedding Model)
+    E --> F[(ChromaDB)]
 
+4️⃣ RAG Implementation (Req 4)
+When a user asks a question:
+1. The query is embedded 
+2. Top-K relevant chunks are retrieved (K = 3) 
+3. Retrieved context is injected into the prompt 
+4. A language model generates an answer 
+5. Citations are displayed 
 
-```
-##  How to Build the Database
+Generation Model
+* Model: google/flan-t5-base 
+* Runs locally (no paid API) 
+* Max tokens: 256 
+* Device: CPU 
+The model is instructed to:
+* Use only provided context 
+* Avoid hallucination 
+* Include citation references 
+* End answers with: Sources: [1], [2], ...
+*  
 
-To generate the vector database locally, follow these steps:
+RAG Flow
+graph LR
+    A[User Question] --> B[Embed Query]
+    B --> C[Chroma Search]
+    C --> D[Top-K Chunks]
+    D --> E[LLM Prompt]
+    E --> F[Answer + Citations]
 
-### 1. Install Dependencies
-```bash
-pip install pandas chromadb sentence-transformers tqdm
+5️⃣ Conversation Memory (Req 5)
+To support follow-up questions, we implemented memory using a rolling buffer.
+* Stores last 5 user messages
+* Stores last 5 assistant responses
+* Injected into prompt before each new question
+This allows the chatbot to understand:
+* “the first one”
+* “their dividend dates”
+* “that company”
+Memory improves multi-turn reasoning without rebuilding the database.
 
-```
+Memory Flow
+graph LR
+    A[New Question] --> B[Retrieve Memory]
+    B --> C[Retrieve Top-K Chunks]
+    C --> D[Prompt = Memory + Context + Question]
+    D --> E[LLM Response]
+    E --> F[Update Memory]
 
-### 2. Run the Builder Script
+🛠️ How to Run the Project
+Step 1 – Install Dependencies
+pip install pandas chromadb sentence-transformers tqdm transformers torch
 
-```bash
+Step 2 – Build the Vector Database
 python build_vector_db.py
+This creates:
+* ./chroma_db/
+* processed_chunks.json
 
-```
+Step 3 – Run the Chatbot
+python rag_chat.py
+Type exit to quit.
 
-### 3. Output
+📁 Project Structure
+├── dataset.csv
+├── build_vector_db.py
+├── rag_chat.py
+├── memory.py
+├── chroma_db/
+├── processed_chunks.json
+└── README.md
 
-* You will see a progress bar for indexing.
-* A folder `./chroma_db` will be created. **Do not delete this folder.**
-* A `processed_chunks.json` file will be generated for debugging.
+✅ Requirements Summary
+Requirement	Status
+Req 1 – Domain Selection	✔ Completed
+Req 2 – Document Processing	✔ Completed
+Req 3 – Vector Database	✔ Completed
+Req 4 – RAG Implementation	✔ Completed
+Req 5 – Conversation Memory	✔ Completed
 
----
-
+🎯 Final System Capabilities
+* Persistent vector database
+* Semantic search
+* Citation-backed answers
+* Multi-turn conversation
+* Fully local (no paid API)
+* Reproducible pipeline
