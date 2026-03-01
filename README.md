@@ -25,7 +25,7 @@ The chatbot is built in five major stages:
 
 # 1️⃣ Domain Selection (Requirement 1)
 
-**Domain:** Saudi Stock Exchange (Tadawul) Corporate Announcements
+**Domain:** Corporate Announcements (news)
 
 The dataset contains:
 
