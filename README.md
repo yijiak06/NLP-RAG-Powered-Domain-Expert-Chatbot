@@ -204,7 +204,6 @@ Type `exit` to quit.
 ├── dataset.csv
 ├── build_vector_db.py
 ├── rag_chat.py
-├── memory.py
 ├── chroma_db/
 ├── processed_chunks.json
 └── README.md
