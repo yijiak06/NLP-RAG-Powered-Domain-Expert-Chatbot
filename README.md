@@ -171,6 +171,7 @@ This allows follow-up queries such as:
 
 ```bash
 pip install pandas chromadb sentence-transformers tqdm transformers torch
+pip install sentence-transformers
 ```
 
 ---
