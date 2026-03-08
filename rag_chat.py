@@ -8,6 +8,7 @@ from chromadb.config import Settings
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from sentence_transformers import CrossEncoder
 from memory import ConversationMemory
+from chromadb.utils import embedding_functions
 
 
 # 1. Configuration
@@ -31,8 +32,15 @@ def load_collection():
     """Connect to the Chroma Vector Database."""
     settings = Settings(anonymized_telemetry=False)
     client = chromadb.PersistentClient(path=DB_DIR, settings=settings)
-    return client.get_collection(name=COLLECTION_NAME)
-
+    
+    sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+        model_name="all-MiniLM-L6-v2"
+    )
+    
+    return client.get_collection(
+        name=COLLECTION_NAME, 
+        embedding_function=sentence_transformer_ef
+    )
 def retrieve_chunks(collection, question, reranker, initial_k=INITIAL_RETRIEVE_K, final_k=TOP_K):
     """Retrieve and re-rank document chunks based on the question."""
     
