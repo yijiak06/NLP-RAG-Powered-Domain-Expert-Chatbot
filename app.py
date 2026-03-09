@@ -1,3 +1,6 @@
+import os
+import sys
+import subprocess
 import streamlit as st
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from sentence_transformers import CrossEncoder
@@ -13,13 +16,16 @@ from rag_chat import (
 )
 from memory import ConversationMemory
 
+# =========================
 # 1. Page Configuration
+# =========================
 st.set_page_config(page_title="Financial RAG Assistant", page_icon="📊", layout="centered")
 st.title("📊 Financial Announcements RAG Assistant")
 st.markdown("Ask questions about company financial results, dividends, and contracts.")
 
-
+# =========================
 # Sidebar: Sample Questions
+# =========================
 with st.sidebar:
     st.header("💡 Sample Questions")
     
@@ -40,39 +46,41 @@ with st.sidebar:
     st.divider()
     st.caption("This assistant uses Sentence-BERT for retrieval, Cross-Encoder for re-ranking, and Flan-T5 for generation.")
 
+# =========================
 # 2. Resource Initialization
-@st.cache_resource(show_spinner="Loading Database and Models (This may take a minute)...")
-import os
-import sys
-import subprocess
-
-# 2. Resource Initialization
+# =========================
 @st.cache_resource(show_spinner="Loading Database and Models (This may take a minute)...")
 def init_system():
     db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chroma_db")
     if not os.path.exists(db_path):
-        st.info("First time setup: Building Vector Database natively on the cloud... This will take 1-2 minutes.")
+        print("First time setup: Building Vector Database...")
         try:
             subprocess.run([sys.executable, "build_vector_db.py"], check=True)
-            st.success("Database built successfully!")
+            print("Database built successfully!")
         except Exception as e:
-            st.error(f"Error building database: {e}")
+            print(f"Error building database: {e}")
+    # --------------------------------
 
     collection = load_collection()
     tokenizer = AutoTokenizer.from_pretrained(GEN_MODEL)
     model = AutoModelForSeq2SeqLM.from_pretrained(GEN_MODEL)
     reranker = CrossEncoder(RERANK_MODEL)
     return collection, tokenizer, model, reranker
+
 collection, tokenizer, model, reranker = init_system()
 
+# =========================
 # 3. Session State Setup
+# =========================
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "memory" not in st.session_state:
     st.session_state.memory = ConversationMemory(max_turns=5)
 
+# =========================
 # 4. Chat Interface
+# =========================
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
@@ -83,7 +91,6 @@ for message in st.session_state.messages:
 
 if prompt := st.chat_input("E.g., What dividends were announced by ZAIN KSA?"):
     
-    # Input validation: Reject inputs that lack alphanumeric characters
     if not any(char.isalnum() for char in prompt):
         st.warning("Please enter a valid question containing text, rather than just punctuation.")
     else:
