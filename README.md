@@ -11,7 +11,6 @@ The system enables users to ask financial questions and receive:
 * Fully local execution
 
 ---
-
 ## 📌 Project Overview
 
 The chatbot is built in six major stages:
@@ -21,6 +20,12 @@ The chatbot is built in six major stages:
 4. **Advanced RAG Implementation (Re-ranking)**
 5. Conversation Memory
 6. **Deployment & Conversational UI**
+
+### Public URL
+```bash
+https://nlp-rag-powered-domain-expert-chatbot.streamlit.app/
+
+```
 
 ### 1️⃣ Domain Selection (Requirement 1)
 * **Domain:** Corporate Announcements (news)
