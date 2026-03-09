@@ -42,13 +42,27 @@ with st.sidebar:
 
 # 2. Resource Initialization
 @st.cache_resource(show_spinner="Loading Database and Models (This may take a minute)...")
+import os
+import sys
+import subprocess
+
+# 2. Resource Initialization
+@st.cache_resource(show_spinner="Loading Database and Models (This may take a minute)...")
 def init_system():
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chroma_db")
+    if not os.path.exists(db_path):
+        st.info("First time setup: Building Vector Database natively on the cloud... This will take 1-2 minutes.")
+        try:
+            subprocess.run([sys.executable, "build_vector_db.py"], check=True)
+            st.success("Database built successfully!")
+        except Exception as e:
+            st.error(f"Error building database: {e}")
+
     collection = load_collection()
     tokenizer = AutoTokenizer.from_pretrained(GEN_MODEL)
     model = AutoModelForSeq2SeqLM.from_pretrained(GEN_MODEL)
     reranker = CrossEncoder(RERANK_MODEL)
     return collection, tokenizer, model, reranker
-
 collection, tokenizer, model, reranker = init_system()
 
 # 3. Session State Setup
